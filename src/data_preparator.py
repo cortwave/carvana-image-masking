@@ -20,19 +20,19 @@ TEST_FILE = os.path.join(MAIN_DIR, "test.h5")
 
 
 class Dataset:
-    def __init__(self, batch_size=64):
-        self.batch_size = batch_size
+    def __init__(self):
+        pass
 
     @staticmethod
     def read_img(fname):
-        return (imread(fname) / 255).astype(np.float16)
+        return imread(fname).astype(np.uint8)
 
     def cache_train(self):
         logger.info('Creating cache file for train')
         file = h5py.File(TRAIN_FILE, 'w')
         train_files = os.listdir(TRAIN_DIR)
-        x_data = file.create_dataset('x_data', shape=(len(train_files), 1280, 1918, 3), dtype=np.float16)
-        y_data = file.create_dataset('y_data', shape=(len(train_files), 1280, 1918, 1), dtype=np.int8)
+        x_data = file.create_dataset('x_data', shape=(len(train_files), 1280, 1918, 3), dtype=np.uint8)
+        y_data = file.create_dataset('y_data', shape=(len(train_files), 1280, 1918, 1), dtype=np.uint8)
         names = file.create_dataset('names', shape=(len(train_files),), dtype=h5py.special_dtype(vlen=str))
 
         logger.info(f'There are {len(train_files)} files in train')
@@ -47,7 +47,7 @@ class Dataset:
         logger.info('Creating cache file for test')
         file = h5py.File(TEST_FILE, 'w')
         test_files = os.listdir(TEST_DIR)
-        x_data = file.create_dataset('x_data', shape=(len(test_files), 1280, 1918, 3), dtype=np.float16)
+        x_data = file.create_dataset('x_data', shape=(len(test_files), 1280, 1918, 3), dtype=np.uint8)
         names = file.create_dataset('names', shape=(len(test_files),), dtype=h5py.special_dtype(vlen=str))
 
         logger.info(f'There are {len(test_files)} files in test')
