@@ -4,6 +4,7 @@ import logging
 import h5py
 import numpy as np
 from skimage.io import imread
+from tqdm import tqdm
 
 logging.getLogger('tensorflow').setLevel(logging.WARNING)
 logging.basicConfig(level=logging.INFO,
@@ -11,7 +12,7 @@ logging.basicConfig(level=logging.INFO,
                     datefmt='%H:%M:%S', )
 logger = logging.getLogger(__name__)
 
-MAIN_DIR = os.path.abspath("../data")
+MAIN_DIR = os.path.abspath("data")
 TRAIN_DIR = os.path.join(MAIN_DIR, 'train')
 TEST_DIR = os.path.join(MAIN_DIR, 'test')
 MASK_DIR = os.path.join(MAIN_DIR, 'train_masks')
@@ -29,14 +30,15 @@ class Dataset:
 
     def cache_train(self):
         logger.info('Creating cache file for train')
+        train_files = sorted(os.listdir(TRAIN_DIR))
+        train_size = len(train_files)
         file = h5py.File(TRAIN_FILE, 'w')
-        train_files = os.listdir(TRAIN_DIR)
-        x_data = file.create_dataset('x_data', shape=(len(train_files), 1280, 1918, 3), dtype=np.uint8)
-        y_data = file.create_dataset('y_data', shape=(len(train_files), 1280, 1918, 1), dtype=np.uint8)
-        names = file.create_dataset('names', shape=(len(train_files),), dtype=h5py.special_dtype(vlen=str))
+        x_data = file.create_dataset('x_data', shape=(train_size, 1280, 1918, 3), dtype=np.uint8)
+        y_data = file.create_dataset('y_data', shape=(train_size, 1280, 1918, 1), dtype=np.uint8)
+        names = file.create_dataset('names', shape=(train_size,), dtype=h5py.special_dtype(vlen=str))
 
-        logger.info(f'There are {len(train_files)} files in train')
-        for i, fn in enumerate(os.listdir(TRAIN_DIR)):
+        logger.info(f'There are {train_size} files in train')
+        for i, fn in tqdm(enumerate(train_files), total=train_size):
             img = self.read_img(os.path.join(TRAIN_DIR, fn))
             x_data[i, :, :, :] = img
             y_data[i, :, :, :] = imread(os.path.join(MASK_DIR, fn.replace('.jpg', '_mask.gif'))).reshape(1280, 1918, 1)
@@ -46,13 +48,14 @@ class Dataset:
     def cache_test(self):
         logger.info('Creating cache file for test')
         file = h5py.File(TEST_FILE, 'w')
-        test_files = os.listdir(TEST_DIR)
-        x_data = file.create_dataset('x_data', shape=(len(test_files), 1280, 1918, 3), dtype=np.uint8)
-        names = file.create_dataset('names', shape=(len(test_files),), dtype=h5py.special_dtype(vlen=str))
+        test_files = sorted(os.listdir(TEST_DIR))
+        test_size = len(test_files)
+        x_data = file.create_dataset('x_data', shape=(test_size, 1280, 1918, 3), dtype=np.uint8)
+        names = file.create_dataset('names', shape=(test_size,), dtype=h5py.special_dtype(vlen=str))
 
-        logger.info(f'There are {len(test_files)} files in test')
-        for i, fn in enumerate(os.listdir(TRAIN_DIR)):
-            img = self.read_img(os.path.join(TRAIN_DIR, fn))
+        logger.info(f'There are {test_size} files in test')
+        for i, fn in tqdm(enumerate(test_files), total=test_size):
+            img = self.read_img(os.path.join(TEST_DIR, fn))
             x_data[i, :, :, :] = img
             names[i] = fn
         file.close()
