@@ -8,7 +8,7 @@ data
 
 # User-specific stuff:
 .idea
-
+*.h5py
 
 # CMake
 cmake-build-debug/

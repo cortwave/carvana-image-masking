@@ -1,12 +1,16 @@
 import numpy as np
 import h5py
 import random
+from constants import HEIGHT, WIDTH
 
 TRAIN_SIZE = 318 * 16
 FOLDS_COUNT = 6
 FOLD_SIZE = int(TRAIN_SIZE / FOLDS_COUNT)
-HEIGHT = 1280
-WIDTH = 1918
+
+
+
+def preprocess_batch(batch):
+    return batch / 256 - 0.5
 
 
 def train_generator(n_fold, batch_size=32):
@@ -15,6 +19,7 @@ def train_generator(n_fold, batch_size=32):
 
 def valid_generator(n_fold, batch_size=32):
     return generator(n_fold, False, batch_size)
+
 
 def generator(n_fold, is_train, batch_size):
     train = h5py.File("../data/train.h5")
@@ -29,7 +34,7 @@ def generator(n_fold, is_train, batch_size):
             rand_img, rand_mask = random_crop(img, mask=mask)
             images.append(rand_img)
             masks.append(rand_mask)
-        yield np.array(images), np.array(masks)
+        yield preprocess_batch(np.array(images)), np.array(masks)
 
 
 def get_train_index(n_fold):
