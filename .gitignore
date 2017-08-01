@@ -9,6 +9,7 @@ data
 # User-specific stuff:
 .idea
 *.h5py
+*.csv*
 
 # CMake
 cmake-build-debug/
