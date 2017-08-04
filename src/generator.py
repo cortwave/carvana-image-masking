@@ -3,6 +3,8 @@ import h5py
 import random
 from constants import HEIGHT, WIDTH
 from skimage.transform import resize
+import cv2
+from scipy import ndimage
 
 TRAIN_SIZE = 318 * 16
 FOLDS_COUNT = 6
@@ -32,9 +34,23 @@ def resized_generator(n_fold, is_train, batch_size, size):
             index = get_train_index(n_fold) if is_train else get_valid_index(n_fold)
             img = resize(x_data[index], size, mode="constant")
             mask = resize(y_data[index], size, mode="constant")
+            if is_train:
+                img, mask = augmentate(img, mask)
             images.append(img)
             masks.append(mask)
         yield preprocess_batch(np.array(images)), np.array(masks)
+
+
+def augmentate(img, mask):
+    if random.random() < 0.25:
+        flipcode = random.choice([-1, 0, 1])
+        img = cv2.flip(img, flipcode)
+        mask = np.expand_dims(cv2.flip(mask, flipcode), axis=3)
+    if random.random() < 0.25:
+        angle = random.choice([90, 180, 270])
+        img = ndimage.rotate(img, angle)
+        mask = np.expand_dims(ndimage.rotate(mask.squeeze(), angle), axis=3)
+    return img, mask
 
 
 def train_generator(n_fold, batch_size=32):

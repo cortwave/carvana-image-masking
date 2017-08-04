@@ -10,7 +10,7 @@ data
 .idea
 *.h5py
 *.csv*
-
+src/argparse
 # CMake
 cmake-build-debug/
 

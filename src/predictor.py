@@ -4,7 +4,7 @@ import pandas as pd
 from rle_encoder import rle_encode
 from skimage.io import imread
 from tqdm import tqdm
-from joblib import Parallel, delayed
+from generator import valid_generator_resized
 from skimage.transform import resize
 
 def predict_by_crops(model, img, crop_size=224):
@@ -47,6 +47,27 @@ class Predictor:
         submission['rle_mask'] = np.array(rles)
         submission.to_csv("crop_submission.csv", index=False)
 
+    def dice_coef(self, real, pred):
+        all = []
+        for r, p in zip(real, pred):
+            all.append(np.sum(np.logical_and(r, p)) * 2.0 / (np.sum(p) + np.sum(r)))
+        return np.mean(np.array(all))
+
+    def find_threshold(self, size, n_fold):
+        batch = next(valid_generator_resized(n_fold, size=size, batch_size=4))
+        pred = self.model.predict(batch[0])
+        real = batch[1]
+        best_coef = 0
+        best_t = 0.05
+        for t in np.arange(0.05, 1.00, 0.05):
+            print(t)
+            coef = self.dice_coef(real, pred > t)
+            print(coef)
+            if coef > best_coef:
+                print(f"New best threshold is {t} with score {coef}")
+                best_coef = coef
+                best_t = t
+        return best_t
 
     def create_resized_submission(self, size, threshold=0.90):
         submission = pd.read_csv("../data/sample_submission.csv")

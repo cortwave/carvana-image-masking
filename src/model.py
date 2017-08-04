@@ -2,7 +2,7 @@ from generator import train_generator, valid_generator, train_generator_resized,
 from callbacks import LossHistory
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.optimizers import SGD, Adam
-from dice import dice_coef, dice_coef_loss
+from dice import dice_coef, dice_coef_loss, dice_bce_loss
 from unet import get_unet
 
 
@@ -11,7 +11,7 @@ class UnetModel:
         self.input_size = input_size
         self.unet = get_unet(input_size=input_size)
         self.callbacks = [LossHistory(),
-                          ModelCheckpoint(f"{model_name}.best.weights.h5py", save_best_only=True, verbose=1, monitor="val_dice_coef", mode='max'),
+                          ModelCheckpoint(f"../weights/{model_name}.best.weights.h5py", save_best_only=True, verbose=1, monitor="val_dice_coef", mode='max'),
                           EarlyStopping(monitor="val_dice_coef", patience=patience, mode='max')]
 
     def _get_losses(self):
@@ -43,13 +43,13 @@ class UnetModel:
         else:
             raise Exception(f"Unknown optimizer: {opt}")
         train_gen = train_generator_resized(n_fold=n_fold, batch_size=batch_size, size=self.input_size)
-        valid_gen = valid_generator_resized(n_fold=n_fold, batch_size=batch_size // 2, size=self.input_size)
-        self.unet.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=[dice_coef])
+        valid_gen = valid_generator_resized(n_fold=n_fold, batch_size=batch_size, size=self.input_size)
+        self.unet.compile(optimizer=optimizer, loss=dice_bce_loss, metrics=[dice_coef])
         self.unet.fit_generator(train_gen,
                                 steps_per_epoch=batches,
                                 nb_epoch=epochs,
                                 validation_data=valid_gen,
-                                validation_steps=batches,
+                                validation_steps=batches // 2,
                                 callbacks=self.callbacks)
         return self._get_losses()
 
