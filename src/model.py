@@ -7,7 +7,7 @@ from unet import get_unet
 
 
 class UnetModel:
-    def __init__(self, model_name, input_size=(224,224), patience=3):
+    def __init__(self, model_name, input_size=(224,224), patience=20):
         self.input_size = input_size
         self.unet = get_unet(input_size=input_size)
         self.callbacks = [LossHistory(),
@@ -16,6 +16,12 @@ class UnetModel:
 
     def _get_losses(self):
         return self.callbacks[0].train_losses, self.callbacks[0].val_losses
+
+    def load_weights(self, name):
+        self.unet.load_weights(name)
+
+    def predict(self, images):
+        return self.unet.predict(images)
 
     def fit(self, lr, epochs, n_fold, batch_size=8, opt="Adam", batches=400):
         if opt == "Adam":
