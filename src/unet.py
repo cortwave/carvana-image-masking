@@ -3,8 +3,6 @@ from keras.layers import Input, MaxPooling2D, concatenate, Conv2D, UpSampling2D
 from keras.layers.normalization import BatchNormalization
 from keras.layers.core import Dropout, Activation
 
-# Number of image channels (for example 3 in case of RGB, or 1 for grayscale images)
-INPUT_CHANNELS = 3
 # Number of output masks (1 in case you predict only one type of objects)
 OUTPUT_MASK_CHANNELS = 1
 
@@ -23,8 +21,8 @@ def double_conv_layer(x, size, dropout, batch_norm):
     return conv
 
 
-def get_unet(dropout_val=0.05, batch_norm=True, input_size=(224,224)):
-    inputs = Input((input_size[0], input_size[1], INPUT_CHANNELS))
+def get_unet(dropout_val=0.05, batch_norm=True, input_size=(224,224), input_channels=3):
+    inputs = Input((input_size[0], input_size[1], input_channels))
     conv1 = double_conv_layer(inputs, 32, dropout_val, batch_norm)
     pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
 

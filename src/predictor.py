@@ -2,19 +2,28 @@ from constants import HEIGHT, WIDTH
 import numpy as np
 import pandas as pd
 from rle_encoder import rle_encode
-from skimage.io import imread
+from skimage.io import imread, imsave
 from tqdm import tqdm
 from generator import valid_generator_resized
 from skimage.transform import resize
+from augmentation import tta, back_tta
 
-def predict_by_crops(model, img, crop_size=224):
-    img = img / 255 - 0.5
-    mask = np.zeros((HEIGHT, WIDTH))
-    for h in range(0, HEIGHT - crop_size, crop_size):
-        for w in range(0, WIDTH - crop_size, crop_size):
+def predict_by_crops(model, img, mask_pred, crop_size=224):
+    img = img / 256
+    mask = mask_pred.copy() / 256
+    shift = 24
+    for h in range(0, HEIGHT - crop_size, crop_size - shift):
+        for w in range(0, WIDTH - crop_size, crop_size - shift):
             crop = img[h:h + crop_size, w:w + crop_size, :]
-            pred = model.predict(np.array([crop]))[0].squeeze()
-            mask[h: h + crop_size, w: w + crop_size] = pred
+            mask_pred_crop = mask_pred[h:h + crop_size, w:w + crop_size]
+            if 50 < mask_pred_crop.mean() < 200:
+                augmentated = tta(crop)
+                pred = model.predict(augmentated).squeeze()
+                backed = back_tta(pred)
+                pred = sum(backed) / len(backed)
+                mask[h + shift: h + crop_size - shift, w + shift: w + crop_size - shift] = pred[shift:-shift, shift:-shift]
+            else:
+                continue
     return mask
 
 
@@ -27,7 +36,10 @@ def predict_resized(model, img, size):
 
 def predict_image(model, image_name, threshold, crop_size):
     image = imread(f"../data/test/{image_name}")
-    mask = predict_by_crops(model, image, crop_size)
+    mask_pred = imread(f"../data/test_pred/{image_name}")
+    image = np.dstack([image, mask_pred])
+    mask = predict_by_crops(model, image, mask_pred, crop_size=crop_size)
+    imsave(f"../data/final_pred/{image_name}", mask)
     rle = rle_encode(mask.squeeze() > threshold)
     return rle
 

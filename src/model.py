@@ -7,9 +7,9 @@ from unet import get_unet
 
 
 class UnetModel:
-    def __init__(self, model_name, input_size=(224,224), patience=20):
+    def __init__(self, model_name, input_size=(224,224), patience=20, input_channels=3):
         self.input_size = input_size
-        self.unet = get_unet(input_size=input_size)
+        self.unet = get_unet(input_size=input_size, input_channels=input_channels)
         self.callbacks = [LossHistory(),
                           ModelCheckpoint(f"../weights/{model_name}.best.weights.h5py", save_best_only=True, verbose=1, monitor="val_dice_coef", mode='max'),
                           EarlyStopping(monitor="val_dice_coef", patience=patience, mode='max')]
@@ -32,7 +32,7 @@ class UnetModel:
             raise Exception(f"Unknown optimizer: {opt}")
         train_gen = train_generator(n_fold=n_fold, batch_size=batch_size)
         valid_gen = valid_generator(n_fold=n_fold, batch_size=batch_size)
-        self.unet.compile(optimizer=optimizer, loss=dice_coef_loss, metrics=[dice_coef])
+        self.unet.compile(optimizer=optimizer, loss=dice_bce_loss, metrics=[dice_coef])
         self.unet.fit_generator(train_gen,
                                 steps_per_epoch=batches,
                                 nb_epoch=epochs,
@@ -56,7 +56,8 @@ class UnetModel:
                                 nb_epoch=epochs,
                                 validation_data=valid_gen,
                                 validation_steps=batches // 2,
-                                callbacks=self.callbacks)
+                                callbacks=self.callbacks,
+                                workers=4)
         return self._get_losses()
 
 

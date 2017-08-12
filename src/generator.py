@@ -3,8 +3,10 @@ import h5py
 import random
 from constants import HEIGHT, WIDTH
 from skimage.transform import resize
+from skimage.io import imread
 import cv2
 from scipy import ndimage
+import os
 
 TRAIN_SIZE = 318 * 16
 FOLDS_COUNT = 6
@@ -53,28 +55,48 @@ def augmentate(img, mask):
     return img, mask
 
 
-def train_generator(n_fold, batch_size=32):
-    return generator(n_fold, True, batch_size)
+def train_generator(n_fold, batch_size=32, crop_size=224):
+    return generator(n_fold, True, batch_size, crop_size)
 
 
-def valid_generator(n_fold, batch_size=32):
-    return generator(n_fold, False, batch_size)
+def valid_generator(n_fold, batch_size=32, crop_size=224):
+    return generator(n_fold, False, batch_size, crop_size)
 
 
-def generator(n_fold, is_train, batch_size):
-    train = h5py.File("../data/train.h5")
-    x_data = train["x_data"]
-    y_data = train["y_data"]
+def generator(n_fold, is_train, batch_size, crop_size):
+    folder = "../data/train"
+    pred_folder = "../data/train_pred"
+    mask_folder = "../data/train_masks"
+    files = sorted(os.listdir(folder))
     while True:
-        index = get_train_index(n_fold) if is_train else get_valid_index(n_fold)
-        img, mask = x_data[index], y_data[index]
         images = []
         masks = []
+        index = get_train_index(n_fold) if is_train else get_valid_index(n_fold)
+        image_name = files[index]
+        image = imread(f"{folder}/{image_name}")
+        pred_mask = imread(f"{pred_folder}/{image_name}")
+        mask = imread(f"{mask_folder}/{image_name.split('.')[0]}_mask.gif")
         for _ in range(batch_size):
-            rand_img, rand_mask = random_crop(img, mask=mask)
-            images.append(rand_img)
-            masks.append(rand_mask)
-        yield preprocess_batch(np.array(images)), np.array(masks)
+            h, w = find_crop(mask, crop_size)
+            img = np.dstack((image[h:h + crop_size, w:w + crop_size, :], pred_mask[h:h + crop_size, w:w + crop_size]))
+            msk = mask[h:h + crop_size, w:w + crop_size]
+            img, msk = augmentate(img, msk)
+            msk = np.expand_dims(msk.squeeze(), axis=3)
+            images.append(img)
+            masks.append(msk)
+        yield preprocess_batch(np.array(images)), np.array(masks) / 256
+
+
+def find_crop(mask, crop_size):
+    while True:
+        h = random.randint(0, HEIGHT - crop_size)
+        w = random.randint(0, WIDTH - crop_size)
+        img_crop = mask[h:h + crop_size, w:w + crop_size]
+        mean = img_crop.mean()
+        if not 50 < mean < 200:
+            continue
+        else:
+            return h, w
 
 
 def get_train_index(n_fold):
